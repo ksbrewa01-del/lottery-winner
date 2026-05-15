@@ -1,2 +1,5 @@
-# Doctor-patents-portal
-doctor patons poratal
+#Lottery -winner
+
+Created by AI 
+
+Fully Devloped by AI
