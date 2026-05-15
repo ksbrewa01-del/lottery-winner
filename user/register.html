@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Register — Lottery Winner</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body>
+<div class="stars" id="stars"></div>
+<div id="pageLoader"><div class="loader-ring"></div><p>LOADING...</p></div>
+<div id="toast" class="toast"></div>
+
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div style="font-size:52px;">🎰</div>
+      <h1>Lottery Winner</h1>
+      <p>Create your account to get started</p>
+    </div>
+
+    <div id="registerForm">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Full Name *</label>
+          <input type="text" id="regName" class="form-control" placeholder="Enter full name" maxlength="60"/>
+          <div class="form-error" id="nameError">Name is required</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mobile Number *</label>
+          <input type="tel" id="regMobile" class="form-control" placeholder="10-digit mobile" maxlength="10" pattern="\d{10}"/>
+          <div class="form-error" id="mobileError">Enter valid 10-digit mobile</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Email Address *</label>
+        <input type="email" id="regEmail" class="form-control" placeholder="example@gmail.com"/>
+        <div class="form-error" id="emailError">Enter valid Gmail address</div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Date of Birth * (18+)</label>
+          <input type="date" id="regDOB" class="form-control"/>
+          <div class="form-error" id="dobError">Must be 18 years or older</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password *</label>
+          <input type="password" id="regPass" class="form-control" placeholder="8–16 characters" minlength="8" maxlength="16"/>
+          <div class="form-error" id="passError">Password must be 8–16 characters</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Confirm Password *</label>
+        <input type="password" id="regConfirmPass" class="form-control" placeholder="Re-enter password" maxlength="16"/>
+        <div class="form-error" id="confirmError">Passwords do not match</div>
+      </div>
+
+      <button class="btn btn-primary btn-block" onclick="handleRegister()" id="regBtn">
+        🎟️ CREATE ACCOUNT
+      </button>
+
+      <p style="text-align:center;margin-top:20px;color:var(--gray);font-size:14px;">
+        Already have an account? <a href="login.html" style="color:var(--gold);text-decoration:none;">Login here</a>
+      </p>
+    </div>
+
+    <!-- Success screen -->
+    <div id="successScreen" style="display:none;text-align:center;padding:20px 0;">
+      <div style="font-size:72px;margin-bottom:16px;">🎉</div>
+      <h2 style="font-family:'Cinzel Decorative',serif;color:var(--gold);font-size:22px;margin-bottom:12px;">Registration Successful!</h2>
+      <p style="color:var(--gray);margin-bottom:24px;">Your unique Applicant ID is:</p>
+      <div style="font-family:'Orbitron',monospace;font-size:36px;color:var(--gold);background:rgba(255,215,0,0.08);border:1px solid var(--gold);border-radius:12px;padding:20px;margin-bottom:24px;" id="displayApplicantID">—</div>
+      <p style="color:var(--gray-light);font-size:13px;margin-bottom:28px;">⚠️ Save this ID — you need it to login!</p>
+      <button class="btn btn-primary btn-block" onclick="window.location.href='login.html'">
+        PROCEED TO LOGIN →
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+<script src="../js/firebase-config.js"></script>
+
+<script>
+// Generate stars
+(function(){
+  const s = document.getElementById('stars');
+  for(let i=0;i<80;i++){
+    const el = document.createElement('div');
+    el.className = 'star';
+    const size = Math.random()*2.5+0.5;
+    el.style.cssText = `width:${size}px;height:${size}px;top:${Math.random()*100}%;left:${Math.random()*100}%;--d:${2+Math.random()*4}s;--delay:${Math.random()*3}s`;
+    s.appendChild(el);
+  }
+  document.getElementById('pageLoader').style.display='none';
+})();
+
+// Set max DOB (must be 18+)
+window.addEventListener('DOMContentLoaded',()=>{
+  const d = new Date();
+  d.setFullYear(d.getFullYear()-18);
+  document.getElementById('regDOB').max = d.toISOString().split('T')[0];
+});
+
+function showError(id,show,msg){
+  const el=document.getElementById(id);
+  el.style.display=show?'block':'none';
+  if(msg)el.textContent=msg;
+}
+
+async function handleRegister(){
+  const name=document.getElementById('regName').value.trim();
+  const mobile=document.getElementById('regMobile').value.trim();
+  const email=document.getElementById('regEmail').value.trim().toLowerCase();
+  const dob=document.getElementById('regDOB').value;
+  const pass=document.getElementById('regPass').value;
+  const confirm=document.getElementById('regConfirmPass').value;
+  let valid=true;
+
+  // Validate name
+  if(!name){showError('nameError',true,'Name is required');valid=false;}
+  else showError('nameError',false);
+
+  // Validate mobile
+  if(!/^\d{10}$/.test(mobile)){showError('mobileError',true,'Enter valid 10-digit mobile number');valid=false;}
+  else showError('mobileError',false);
+
+  // Validate email (gmail)
+  if(!/^[a-z0-9._%+-]+@gmail\.com$/.test(email)){showError('emailError',true,'Only Gmail addresses allowed (xxx@gmail.com)');valid=false;}
+  else showError('emailError',false);
+
+  // Validate DOB
+  if(!dob||!isAdult(dob)){showError('dobError',true,'You must be at least 18 years old');valid=false;}
+  else showError('dobError',false);
+
+  // Validate password
+  if(pass.length<8||pass.length>16){showError('passError',true,'Password must be 8–16 characters');valid=false;}
+  else showError('passError',false);
+
+  // Confirm password
+  if(pass!==confirm){showError('confirmError',true,'Passwords do not match');valid=false;}
+  else showError('confirmError',false);
+
+  if(!valid)return;
+
+  const btn=document.getElementById('regBtn');
+  btn.disabled=true;btn.textContent='Processing...';
+
+  try{
+    // Check mobile uniqueness
+    const mSnap=await db.collection('users').where('mobile','==',mobile).get();
+    if(!mSnap.empty){showError('mobileError',true,'Mobile number already registered');btn.disabled=false;btn.textContent='🎟️ CREATE ACCOUNT';return;}
+
+    // Check email uniqueness
+    const eSnap=await db.collection('users').where('email','==',email).get();
+    if(!eSnap.empty){showError('emailError',true,'Email already registered');btn.disabled=false;btn.textContent='🎟️ CREATE ACCOUNT';return;}
+
+    // Generate unique applicant ID
+    const applicantID=await generateApplicantID();
+
+    // Save to Firestore
+    await db.collection('users').add({
+      applicantID,
+      name,
+      mobile,
+      email,
+      dob,
+      password: btoa(pass), // base64 encode (use Firebase Auth in production)
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      status:'active'
+    });
+
+    // Show success
+    document.getElementById('registerForm').style.display='none';
+    document.getElementById('successScreen').style.display='block';
+    document.getElementById('displayApplicantID').textContent=applicantID;
+  }catch(e){
+    showToast('Registration failed: '+e.message,'error');
+    btn.disabled=false;btn.textContent='🎟️ CREATE ACCOUNT';
+  }
+}
+</script>
+</body>
+</html>

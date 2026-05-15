@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login — Lottery Winner</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body>
+<div class="stars" id="stars"></div>
+<div id="pageLoader"><div class="loader-ring"></div><p>LOADING...</p></div>
+<div id="toast" class="toast"></div>
+
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div style="font-size:52px;">🎰</div>
+      <h1>Lottery Winner</h1>
+      <p>Login with your Applicant ID & Password</p>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Applicant ID *</label>
+      <input type="number" id="loginID" class="form-control" placeholder="Enter your 8–10 digit ID"/>
+      <div class="form-error" id="idError">Applicant ID is required</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Password *</label>
+      <input type="password" id="loginPass" class="form-control" placeholder="Enter password"/>
+      <div class="form-error" id="passError">Password is required</div>
+    </div>
+
+    <button class="btn btn-primary btn-block" onclick="handleLogin()" id="loginBtn" style="margin-top:8px;">
+      🔑 LOGIN
+    </button>
+
+    <p style="text-align:center;margin-top:20px;color:var(--gray);font-size:14px;">
+      New user? <a href="register.html" style="color:var(--gold);text-decoration:none;">Register here</a>
+    </p>
+    <p style="text-align:center;margin-top:10px;">
+      <a href="../index.html" style="color:var(--gray);text-decoration:none;font-size:13px;">← Back to Home</a>
+    </p>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+<script src="../js/firebase-config.js"></script>
+<script>
+(function(){
+  const s=document.getElementById('stars');
+  for(let i=0;i<80;i++){
+    const el=document.createElement('div');el.className='star';
+    const sz=Math.random()*2.5+0.5;
+    el.style.cssText=`width:${sz}px;height:${sz}px;top:${Math.random()*100}%;left:${Math.random()*100}%;--d:${2+Math.random()*4}s;--delay:${Math.random()*3}s`;
+    s.appendChild(el);
+  }
+  // Redirect if already logged in
+  const session=getSession();
+  if(session){window.location.href='dashboard.html';}
+  document.getElementById('pageLoader').style.display='none';
+})();
+
+function showError(id,show,msg){
+  const el=document.getElementById(id);
+  el.style.display=show?'block':'none';
+  if(msg)el.textContent=msg;
+}
+
+// Allow Enter key
+document.addEventListener('keydown',(e)=>{if(e.key==='Enter')handleLogin();});
+
+async function handleLogin(){
+  const id=document.getElementById('loginID').value.trim();
+  const pass=document.getElementById('loginPass').value;
+  let valid=true;
+  if(!id){showError('idError',true,'Applicant ID is required');valid=false;}else showError('idError',false);
+  if(!pass){showError('passError',true,'Password is required');valid=false;}else showError('passError',false);
+  if(!valid)return;
+
+  const btn=document.getElementById('loginBtn');
+  btn.disabled=true;btn.textContent='Verifying...';
+  try{
+    const snap=await db.collection('users').where('applicantID','==',parseInt(id)).get();
+    if(snap.empty){showError('idError',true,'Applicant ID not found');btn.disabled=false;btn.textContent='🔑 LOGIN';return;}
+    const userDoc=snap.docs[0];
+    const userData=userDoc.data();
+    if(atob(userData.password||'')!==pass){showError('passError',true,'Incorrect password');btn.disabled=false;btn.textContent='🔑 LOGIN';return;}
+    setSession({docId:userDoc.id,...userData});
+    showToast('Login successful!','success');
+    setTimeout(()=>{window.location.href='dashboard.html';},800);
+  }catch(e){
+    showToast('Login failed: '+e.message,'error');
+    btn.disabled=false;btn.textContent='🔑 LOGIN';
+  }
+}
+</script>
+</body>
+</html>

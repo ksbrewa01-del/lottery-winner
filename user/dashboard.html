@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard — Lottery Winner</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <style>
+    .nav-user-info{display:flex;align-items:center;gap:12px;}
+    .user-avatar{width:36px;height:36px;background:linear-gradient(135deg,var(--gold-dark),var(--gold));border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--navy);font-size:14px;}
+    .user-name{color:var(--gold);font-size:14px;font-weight:600;}
+    .applicant-badge{background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);border-radius:6px;padding:4px 10px;font-family:'Orbitron',monospace;font-size:11px;color:var(--gold);}
+    .tab-bar{display:flex;gap:4px;background:rgba(255,255,255,0.04);border-radius:12px;padding:4px;margin-bottom:28px;flex-wrap:wrap;}
+    .tab-btn{flex:1;min-width:100px;padding:10px 16px;border:none;background:transparent;color:var(--gray);font-family:'Rajdhani',sans-serif;font-weight:600;font-size:14px;border-radius:8px;cursor:pointer;transition:all 0.2s;letter-spacing:0.5px;white-space:nowrap;}
+    .tab-btn.active{background:linear-gradient(135deg,var(--gold-dark),var(--gold));color:var(--navy);}
+    .tab-content{display:none;}
+    .tab-content.active{display:block;}
+    .ticket-price-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(0,212,255,0.1);border:1px solid var(--accent2);color:var(--accent2);padding:6px 16px;border-radius:50px;font-size:14px;font-weight:600;margin-bottom:20px;}
+  </style>
+</head>
+<body>
+<div class="stars" id="stars"></div>
+<div id="pageLoader"><div class="loader-ring"></div><p>LOADING...</p></div>
+<div id="toast" class="toast"></div>
+
+<!-- Navbar -->
+<nav class="navbar">
+  <div class="nav-inner">
+    <a href="#" class="nav-logo"><span class="logo-icon">🎰</span>Lottery Winner</a>
+    <div class="nav-user-info" id="navUserInfo">
+      <div class="user-avatar" id="navAvatar">?</div>
+      <div>
+        <div class="user-name" id="navName">Loading...</div>
+        <div class="applicant-badge" id="navID">—</div>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="handleLogout()">Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div class="main">
+  <!-- Tabs -->
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('tickets')">🎟️ Buy Ticket</button>
+    <button class="tab-btn" onclick="switchTab('mytickets')">📋 My Tickets</button>
+    <button class="tab-btn" onclick="switchTab('buyers')">👥 Total Buyers</button>
+    <button class="tab-btn" onclick="switchTab('stats')">📊 Statistics</button>
+  </div>
+
+  <!-- TAB: BUY TICKET -->
+  <div class="tab-content active" id="tab-tickets">
+    <div class="page-header">
+      <h1 class="page-title">🎟️ Buy Lottery Ticket</h1>
+      <p class="page-subtitle">Purchase your lucky ticket and win big!</p>
+    </div>
+    <div class="card" style="max-width:500px;">
+      <div class="ticket-price-badge">💰 Ticket Price: ₹9 per ticket</div>
+      <div class="form-group">
+        <label class="form-label">Number of Tickets</label>
+        <input type="number" id="ticketQty" class="form-control" value="1" min="1" max="10" oninput="updateTotal()"/>
+      </div>
+      <div style="background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.2);border-radius:12px;padding:16px;margin-bottom:20px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:14px;color:var(--gray);">
+          <span>Ticket Price</span><span>₹9 × <span id="qtyDisplay">1</span></span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:20px;font-weight:700;color:var(--gold);font-family:'Orbitron',monospace;">
+          <span>Total Amount</span><span>₹<span id="totalDisplay">9</span></span>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="openPaymentModal()" style="font-size:16px;padding:16px;">
+        💳 PROCEED TO PAYMENT
+      </button>
+    </div>
+  </div>
+
+  <!-- TAB: MY TICKETS -->
+  <div class="tab-content" id="tab-mytickets">
+    <div class="page-header">
+      <h1 class="page-title">📋 My Tickets</h1>
+      <p class="page-subtitle">Track all your purchased lottery tickets</p>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;" id="ticketFilterBtns">
+      <button class="btn btn-sm" id="filter-all" onclick="filterTickets('all')" style="background:rgba(255,215,0,0.2);border:1px solid var(--gold);color:var(--gold);">All</button>
+      <button class="btn btn-sm btn-secondary" onclick="filterTickets('pending')">⏳ Pending</button>
+      <button class="btn btn-sm btn-secondary" onclick="filterTickets('approved')">✅ Approved</button>
+      <button class="btn btn-sm btn-secondary" onclick="filterTickets('rejected')">❌ Rejected</button>
+    </div>
+    <div id="ticketsGrid" class="tickets-grid">
+      <div class="empty-state"><div class="empty-icon">🎟️</div><p>No tickets found</p></div>
+    </div>
+  </div>
+
+  <!-- TAB: TOTAL BUYERS -->
+  <div class="tab-content" id="tab-buyers">
+    <div class="page-header">
+      <h1 class="page-title">👥 Total Buyers</h1>
+      <p class="page-subtitle">All registered lottery participants</p>
+    </div>
+    <div class="card">
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr><th>#</th><th>Applicant ID</th><th>Name</th><th>Number of Tickets</th></tr>
+          </thead>
+          <tbody id="buyersTableBody">
+            <tr><td colspan="4" style="text-align:center;color:var(--gray);">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: STATS -->
+  <div class="tab-content" id="tab-stats">
+    <div class="page-header">
+      <h1 class="page-title">📊 Statistics</h1>
+      <p class="page-subtitle">Lottery overview and winners</p>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">🎟️</div>
+        <div class="stat-value" id="statTotalSold">—</div>
+        <div class="stat-label">Total Tickets Sold</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">👥</div>
+        <div class="stat-value" id="statTotalUsers">—</div>
+        <div class="stat-label">Total Registered</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">💰</div>
+        <div class="stat-value" id="statRevenue">—</div>
+        <div class="stat-label">Total Revenue (₹)</div>
+      </div>
+    </div>
+    <h2 class="section-title">🏆 Last Winners</h2>
+    <div id="winnersListPub">
+      <div class="empty-state"><div class="empty-icon">🏆</div><p>No winners yet</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- PAYMENT MODAL -->
+<div class="modal-overlay" id="paymentModal">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <div class="modal-title">💳 Complete Payment</div>
+      <button class="modal-close" onclick="closeModal('paymentModal')">✕</button>
+    </div>
+
+    <!-- Step 1: UPI -->
+    <div id="payStep1">
+      <div class="upi-box">
+        <p style="color:var(--gray);font-size:13px;margin-bottom:8px;">Pay via UPI to:</p>
+        <div class="upi-id" id="upiID">lottery@upi</div>
+        <button class="copy-btn" onclick="copyUPI()" id="copyUPIBtn">📋 Copy UPI ID</button>
+      </div>
+      <div style="background:rgba(255,165,0,0.08);border:1px solid rgba(255,165,0,0.3);border-radius:10px;padding:14px;margin-bottom:20px;font-size:13px;color:orange;">
+        <strong>Instructions:</strong><br/>
+        1. Open your UPI app (PhonePe, GPay, Paytm, etc.)<br/>
+        2. Send ₹<span id="payAmt">9</span> to the UPI ID above<br/>
+        3. Take a screenshot of the payment confirmation<br/>
+        4. Note down the 12-digit UTR Number
+      </div>
+      <button class="btn btn-primary btn-block" onclick="goToStep2()">I HAVE PAID →</button>
+    </div>
+
+    <!-- Step 2: Upload -->
+    <div id="payStep2" style="display:none;">
+      <div class="form-group">
+        <label class="form-label">UTR / Transaction Number * (12 digits)</label>
+        <input type="text" id="utrNumber" class="form-control" placeholder="Enter 12-digit UTR number" maxlength="12" oninput="validateUTR()"/>
+        <div class="form-error" id="utrError">Enter valid 12-digit UTR number</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Payment Screenshot *</label>
+        <div class="file-upload-wrap">
+          <input type="file" id="screenshotFile" accept="image/*" onchange="previewScreenshot()"/>
+          <div class="file-upload-icon">📸</div>
+          <div class="file-upload-text">Click to upload payment screenshot</div>
+          <img id="screenshotPreview" class="file-preview" src="" alt="Preview"/>
+        </div>
+        <div class="form-error" id="screenshotError">Please upload payment screenshot</div>
+      </div>
+      <div style="display:flex;gap:12px;">
+        <button class="btn btn-secondary" onclick="goToStep1()">← Back</button>
+        <button class="btn btn-primary" style="flex:1;" onclick="submitTicket()" id="submitTicketBtn">
+          🎟️ SUBMIT TICKET
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SUCCESS TICKET MODAL -->
+<div class="modal-overlay" id="ticketSuccessModal">
+  <div class="modal" style="text-align:center;max-width:420px;">
+    <div style="font-size:64px;margin-bottom:16px;">🎉</div>
+    <h2 style="font-family:'Cinzel Decorative',serif;color:var(--gold);margin-bottom:16px;">Ticket Submitted!</h2>
+    <p style="color:var(--gray);margin-bottom:24px;">Your ticket is under review. Once approved, your details will be visible below.</p>
+    <div style="background:rgba(255,215,0,0.06);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:24px;">
+      <div style="margin-bottom:12px;">
+        <div style="color:var(--gray);font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Token Number</div>
+        <div style="font-family:'Orbitron',monospace;font-size:28px;color:var(--gold);" id="newTokenNum">—</div>
+      </div>
+      <div>
+        <div style="color:var(--gray);font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Secret Code</div>
+        <div style="font-family:'Orbitron',monospace;font-size:22px;color:var(--accent2);" id="newSecretCode">—</div>
+      </div>
+    </div>
+    <p style="color:var(--red);font-size:13px;margin-bottom:24px;">⚠️ Keep your Secret Code safe! Never share it with anyone.</p>
+    <button class="btn btn-primary btn-block" onclick="closeModal('ticketSuccessModal');loadMyTickets();">VIEW MY TICKETS</button>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+<script src="../js/firebase-config.js"></script>
+<script>
+// ---- CONFIG ----
+const UPI_ID = 'lottery@upi'; // <-- Change to your UPI ID
+const TICKET_PRICE = 9;
+
+let currentUser = null;
+let allMyTickets = [];
+let activeFilter = 'all';
+
+// Stars
+(function(){
+  const s=document.getElementById('stars');
+  for(let i=0;i<80;i++){
+    const el=document.createElement('div');el.className='star';
+    const sz=Math.random()*2.5+0.5;
+    el.style.cssText=`width:${sz}px;height:${sz}px;top:${Math.random()*100}%;left:${Math.random()*100}%;--d:${2+Math.random()*4}s;--delay:${Math.random()*3}s`;
+    s.appendChild(el);
+  }
+})();
+
+// Auth check
+window.addEventListener('DOMContentLoaded', async () => {
+  currentUser = getSession();
+  if(!currentUser){window.location.href='login.html';return;}
+  document.getElementById('navAvatar').textContent = currentUser.name ? currentUser.name[0].toUpperCase() : '?';
+  document.getElementById('navName').textContent = currentUser.name || 'User';
+  document.getElementById('navID').textContent = 'ID: ' + currentUser.applicantID;
+  document.getElementById('upiID').textContent = UPI_ID;
+  document.getElementById('pageLoader').style.display='none';
+  loadMyTickets();
+  loadBuyers();
+  loadStats();
+});
+
+function switchTab(name){
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+function handleLogout(){
+  clearSession();
+  window.location.href='login.html';
+}
+
+function updateTotal(){
+  const qty = parseInt(document.getElementById('ticketQty').value)||1;
+  document.getElementById('qtyDisplay').textContent=qty;
+  document.getElementById('totalDisplay').textContent=(qty*TICKET_PRICE);
+}
+
+function openPaymentModal(){
+  const qty=parseInt(document.getElementById('ticketQty').value)||1;
+  document.getElementById('payAmt').textContent=qty*TICKET_PRICE;
+  document.getElementById('paymentModal').classList.add('open');
+  goToStep1();
+}
+
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+
+function copyUPI(){
+  navigator.clipboard.writeText(UPI_ID);
+  const btn=document.getElementById('copyUPIBtn');
+  btn.textContent='✅ Copied!';
+  btn.classList.add('copied');
+  setTimeout(()=>{btn.textContent='📋 Copy UPI ID';},2000);
+}
+
+function goToStep1(){
+  document.getElementById('payStep1').style.display='block';
+  document.getElementById('payStep2').style.display='none';
+}
+function goToStep2(){
+  document.getElementById('payStep1').style.display='none';
+  document.getElementById('payStep2').style.display='block';
+}
+
+function validateUTR(){
+  const v=document.getElementById('utrNumber').value;
+  const err=document.getElementById('utrError');
+  if(/^\d{12}$/.test(v)){err.style.display='none';return true;}
+  err.style.display='block';err.textContent='UTR must be exactly 12 digits';return false;
+}
+
+function previewScreenshot(){
+  const file=document.getElementById('screenshotFile').files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=document.getElementById('screenshotPreview');
+    img.src=e.target.result;img.style.display='block';
+  };reader.readAsDataURL(file);
+}
+
+async function submitTicket(){
+  if(!validateUTR()) return;
+  const file=document.getElementById('screenshotFile').files[0];
+  if(!file){document.getElementById('screenshotError').style.display='block';return;}
+  document.getElementById('screenshotError').style.display='none';
+
+  const btn=document.getElementById('submitTicketBtn');
+  btn.disabled=true;btn.textContent='Uploading...';
+
+  try{
+    const qty=parseInt(document.getElementById('ticketQty').value)||1;
+    const utr=document.getElementById('utrNumber').value.trim();
+
+    // Upload screenshot to Firebase Storage
+    const storageRef=storage.ref(`screenshots/${currentUser.applicantID}_${Date.now()}`);
+    const snap=await storageRef.put(file);
+    const screenshotURL=await snap.ref.getDownloadURL();
+
+    // Generate tickets
+    const tickets=[];
+    for(let i=0;i<qty;i++){
+      const secretCode=await generateSecretCode();
+      const tokenNumber=await generateTokenNumber();
+      const ticketRef=await db.collection('tickets').add({
+        applicantID: currentUser.applicantID,
+        userDocId: currentUser.docId,
+        userName: currentUser.name,
+        userMobile: currentUser.mobile,
+        utr,
+        screenshotURL,
+        secretCode,
+        tokenNumber,
+        status:'pending',
+        amount: TICKET_PRICE,
+        purchasedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      tickets.push({secretCode,tokenNumber,id:ticketRef.id});
+    }
+
+    closeModal('paymentModal');
+    document.getElementById('newTokenNum').textContent=tickets[0].tokenNumber;
+    document.getElementById('newSecretCode').textContent=tickets[0].secretCode;
+    document.getElementById('ticketSuccessModal').classList.add('open');
+
+    // Reset form
+    document.getElementById('utrNumber').value='';
+    document.getElementById('screenshotFile').value='';
+    document.getElementById('screenshotPreview').style.display='none';
+  }catch(e){
+    showToast('Failed to submit ticket: '+e.message,'error');
+  }finally{
+    btn.disabled=false;btn.textContent='🎟️ SUBMIT TICKET';
+  }
+}
+
+function filterTickets(status){
+  activeFilter=status;
+  renderTickets();
+}
+
+function renderTickets(){
+  const grid=document.getElementById('ticketsGrid');
+  const filtered=activeFilter==='all'?allMyTickets:allMyTickets.filter(t=>t.status===activeFilter);
+  if(!filtered.length){
+    grid.innerHTML='<div class="empty-state"><div class="empty-icon">🎟️</div><p>No '+(activeFilter==='all'?'':''+activeFilter+' ')+'tickets found</p></div>';
+    return;
+  }
+  grid.innerHTML=filtered.map(t=>`
+    <div class="ticket-card ${t.status}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
+        <div>
+          <div style="font-size:11px;color:var(--gray);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Token Number</div>
+          <div class="ticket-number">${t.tokenNumber||'⏳ Pending'}</div>
+        </div>
+        <span class="badge badge-${t.status}">${t.status}</span>
+      </div>
+      <div style="margin-bottom:16px;">
+        <div style="font-size:11px;color:var(--gray);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Secret Code</div>
+        <div class="ticket-secret">${t.secretCode||'⏳ Pending'}</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--gray);border-top:1px solid var(--border);padding-top:12px;">
+        <span>UTR: ${t.utr||'—'}</span>
+        <span>₹${t.amount||TICKET_PRICE}</span>
+      </div>
+      <div style="font-size:12px;color:var(--gray);margin-top:6px;">${t.purchasedAt?formatDate(t.purchasedAt):''}</div>
+    </div>
+  `).join('');
+}
+
+async function loadMyTickets(){
+  try{
+    const snap=await db.collection('tickets').where('applicantID','==',currentUser.applicantID).orderBy('purchasedAt','desc').get();
+    allMyTickets=snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderTickets();
+  }catch(e){console.error(e);}
+}
+
+async function loadBuyers(){
+  try{
+    const usersSnap=await db.collection('users').get();
+    const users=usersSnap.docs.map(d=>d.data());
+    const ticketsSnap=await db.collection('tickets').get();
+    const ticketCounts={};
+    ticketsSnap.docs.forEach(d=>{
+      const a=d.data().applicantID;
+      ticketCounts[a]=(ticketCounts[a]||0)+1;
+    });
+    const tbody=document.getElementById('buyersTableBody');
+    if(!users.length){tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--gray);">No users yet</td></tr>';return;}
+    tbody.innerHTML=users.map((u,i)=>`
+      <tr>
+        <td>${i+1}</td>
+        <td><span style="font-family:'Orbitron',monospace;color:var(--gold);">${u.applicantID}</span></td>
+        <td>${u.name}</td>
+        <td><span style="font-family:'Orbitron',monospace;color:var(--accent2);">${ticketCounts[u.applicantID]||0}</span> tickets</td>
+      </tr>
+    `).join('');
+  }catch(e){console.error(e);}
+}
+
+async function loadStats(){
+  try{
+    const [usersSnap,ticketsSnap,winnersSnap]=await Promise.all([
+      db.collection('users').get(),
+      db.collection('tickets').where('status','==','approved').get(),
+      db.collection('winners').orderBy('createdAt','desc').limit(10).get()
+    ]);
+    document.getElementById('statTotalSold').textContent=ticketsSnap.size;
+    document.getElementById('statTotalUsers').textContent=usersSnap.size;
+    document.getElementById('statRevenue').textContent=ticketsSnap.size*TICKET_PRICE;
+    const medals=['🥇','🥈','🥉','4️⃣','5️⃣'];
+    const winners=winnersSnap.docs.map(d=>d.data());
+    const container=document.getElementById('winnersListPub');
+    if(!winners.length){container.innerHTML='<div class="empty-state"><div class="empty-icon">🏆</div><p>No winners announced yet</p></div>';return;}
+    container.innerHTML=winners.map((w,i)=>`
+      <div class="winner-card-pub">
+        <div class="winner-medal">${medals[i]||'🎖️'}</div>
+        <div class="winner-info">
+          <div class="winner-token-pub">Token #${w.tokenNumber}</div>
+          <div class="winner-date">🏆 ${w.spinRound? 'Round '+w.spinRound+' Winner' : 'Winner'} • ${w.createdAt?formatDate(w.createdAt):''}</div>
+        </div>
+      </div>
+    `).join('');
+  }catch(e){console.error(e);}
+}
+</script>
+</body>
+</html>

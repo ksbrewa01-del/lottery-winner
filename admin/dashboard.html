@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Dashboard — Lottery Winner</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    .admin-sidebar{position:fixed;top:0;left:0;bottom:0;width:240px;background:rgba(10,14,39,0.98);border-right:1px solid var(--border);z-index:200;transition:transform 0.3s;backdrop-filter:blur(20px);}
+    .admin-sidebar.closed{transform:translateX(-240px);}
+    .sidebar-logo{padding:24px 20px;border-bottom:1px solid var(--border);}
+    .sidebar-logo h2{font-family:'Cinzel Decorative',serif;font-size:16px;color:var(--gold);}
+    .sidebar-logo p{font-size:12px;color:var(--gray);margin-top:4px;}
+    .sidebar-nav{padding:16px 12px;}
+    .sidebar-link{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:8px;color:var(--gray-light);text-decoration:none;font-size:14px;font-weight:500;transition:all 0.2s;margin-bottom:4px;cursor:pointer;border:none;background:none;width:100%;text-align:left;}
+    .sidebar-link:hover,.sidebar-link.active{background:rgba(255,215,0,0.1);color:var(--gold);}
+    .sidebar-link .icon{font-size:18px;min-width:24px;}
+    .admin-main{margin-left:240px;min-height:100vh;transition:margin-left 0.3s;}
+    .admin-topbar{background:rgba(10,14,39,0.95);border-bottom:1px solid var(--border);padding:0 24px;height:65px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;backdrop-filter:blur(20px);}
+    .admin-content{padding:28px 24px;max-width:1400px;}
+    .page-section{display:none;}
+    .page-section.active{display:block;}
+    .toggle-sidebar-btn{background:none;border:none;color:var(--gold);font-size:22px;cursor:pointer;padding:8px;}
+    @media(max-width:900px){
+      .admin-sidebar{transform:translateX(-240px);}
+      .admin-sidebar.open{transform:translateX(0);}
+      .admin-main{margin-left:0;}
+    }
+    .action-btns{display:flex;gap:6px;flex-wrap:wrap;}
+    .img-thumb{width:48px;height:48px;object-fit:cover;border-radius:6px;border:1px solid var(--border);cursor:pointer;transition:transform 0.2s;}
+    .img-thumb:hover{transform:scale(1.1);border-color:var(--gold);}
+    .status-select{background:var(--navy-mid);color:var(--white);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-family:'Rajdhani',sans-serif;font-size:13px;cursor:pointer;}
+    .filter-card{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:20px;}
+    .spin-result-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:8px;font-family:'Orbitron',monospace;font-size:16px;}
+    .verify-section{background:rgba(0,212,255,0.05);border:1px solid rgba(0,212,255,0.2);border-radius:var(--radius);padding:24px;margin-top:20px;}
+    .date-select-wrap{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px;}
+    .checkbox-col{width:40px;}
+    input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:var(--gold);}
+  </style>
+</head>
+<body>
+<div class="stars" id="stars"></div>
+<div id="pageLoader"><div class="loader-ring"></div><p>LOADING...</p></div>
+<div id="toast" class="toast"></div>
+
+<!-- Fullscreen Image -->
+<div class="fullscreen-img-overlay" id="fullscreenOverlay" onclick="closeFullscreen()">
+  <img src="" id="fullscreenImg" alt="Screenshot"/>
+</div>
+
+<!-- SIDEBAR -->
+<div class="admin-sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <h2>🎰 Admin</h2>
+    <p>Lottery Winner Panel</p>
+  </div>
+  <nav class="sidebar-nav">
+    <button class="sidebar-link active" onclick="showSection('dashboard')"><span class="icon">📊</span>Dashboard</button>
+    <button class="sidebar-link" onclick="showSection('users')"><span class="icon">👥</span>Users & Tickets</button>
+    <button class="sidebar-link" onclick="showSection('spin')"><span class="icon">🎡</span>Spin Wheel</button>
+    <button class="sidebar-link" onclick="showSection('verify')"><span class="icon">🔍</span>Verify Token</button>
+    <button class="sidebar-link" onclick="showSection('analytics')"><span class="icon">📈</span>Analytics</button>
+    <button class="sidebar-link" onclick="showSection('winners')"><span class="icon">🏆</span>Winners Log</button>
+    <div style="margin-top:auto;padding-top:20px;border-top:1px solid var(--border);">
+      <button class="sidebar-link" onclick="adminLogout()" style="color:var(--red);"><span class="icon">🚪</span>Logout</button>
+    </div>
+  </nav>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="admin-main" id="adminMain">
+  <div class="admin-topbar">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button class="toggle-sidebar-btn" onclick="toggleSidebar()">☰</button>
+      <h1 style="font-family:'Orbitron',monospace;font-size:16px;color:var(--gold);" id="topbarTitle">Dashboard</h1>
+    </div>
+    <div style="font-size:13px;color:var(--gray);">
+      Admin: <span style="color:var(--gold);">admin</span>
+      <span id="currentDateTime" style="margin-left:12px;font-family:'Orbitron',monospace;font-size:11px;"></span>
+    </div>
+  </div>
+
+  <div class="admin-content">
+
+    <!-- DASHBOARD -->
+    <div class="page-section active" id="section-dashboard">
+      <div class="page-header">
+        <h1 class="page-title">📊 Dashboard</h1>
+        <p class="page-subtitle">Overview of all lottery activity</p>
+      </div>
+      <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));">
+        <div class="stat-card" onclick="showSection('users');filterByStatus('all')">
+          <div class="stat-icon">👥</div>
+          <div class="stat-value" id="dTotalUsers">—</div>
+          <div class="stat-label">Total Users</div>
+        </div>
+        <div class="stat-card" onclick="showSection('users');filterByStatus('pending')">
+          <div class="stat-icon">⏳</div>
+          <div class="stat-value" id="dPending">—</div>
+          <div class="stat-label">Pending</div>
+        </div>
+        <div class="stat-card" onclick="showSection('users');filterByStatus('approved')">
+          <div class="stat-icon">✅</div>
+          <div class="stat-value" id="dApproved">—</div>
+          <div class="stat-label">Approved</div>
+        </div>
+        <div class="stat-card" onclick="showSection('users');filterByStatus('rejected')">
+          <div class="stat-icon">❌</div>
+          <div class="stat-value" id="dRejected">—</div>
+          <div class="stat-label">Rejected</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🎟️</div>
+          <div class="stat-value" id="dTotalTickets">—</div>
+          <div class="stat-label">Total Tickets</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">💰</div>
+          <div class="stat-value" id="dRevenue">—</div>
+          <div class="stat-label">Revenue (₹)</div>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title">📅 Daily Ticket Sales (Last 7 Days)</div>
+        <canvas id="dashChart"></canvas>
+      </div>
+    </div>
+
+    <!-- USERS & TICKETS -->
+    <div class="page-section" id="section-users">
+      <div class="page-header">
+        <h1 class="page-title">👥 Users & Tickets</h1>
+        <p class="page-subtitle">Manage all users and their ticket applications</p>
+      </div>
+
+      <!-- Filter Bar -->
+      <div class="filter-card">
+        <div class="filter-bar">
+          <input type="date" id="filterDate" class="form-control" style="max-width:180px;" onchange="loadUsers()"/>
+          <select id="filterStatus" class="form-control" style="max-width:160px;" onchange="loadUsers()">
+            <option value="all">All Status</option>
+            <option value="pending">⏳ Pending</option>
+            <option value="approved">✅ Approved</option>
+            <option value="rejected">❌ Rejected</option>
+          </select>
+          <input type="text" id="filterSearch" class="form-control" style="max-width:200px;" placeholder="Search name/ID/mobile..." oninput="renderUsersTable()"/>
+          <button class="btn btn-secondary btn-sm" onclick="clearFilters()">Clear</button>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+          <button class="btn btn-sm" style="background:rgba(255,68,68,0.15);color:var(--red);border:1px solid var(--red);" onclick="deleteSelectedRecords()">🗑️ Delete Selected</button>
+          <button class="btn btn-sm" style="background:rgba(0,200,81,0.15);color:var(--green);border:1px solid var(--green);" onclick="exportCSV()">📥 Export CSV</button>
+          <button class="btn btn-sm" style="background:rgba(0,212,255,0.15);color:var(--accent2);border:1px solid var(--accent2);" onclick="exportPDF()">📄 Export PDF</button>
+          <button class="btn btn-sm" style="background:rgba(155,89,182,0.15);color:var(--purple);border:1px solid var(--purple);" onclick="exportTelegramCSV()">📱 Telegram/WhatsApp Export</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th class="checkbox-col"><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"/></th>
+                <th>#</th><th>Applicant ID</th><th>Name</th><th>Mobile</th>
+                <th>Email</th><th>DOB</th><th>Token #</th><th>Secret Code</th>
+                <th>UTR</th><th>Screenshot</th><th>Status</th><th>Date</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody">
+              <tr><td colspan="14" style="text-align:center;color:var(--gray);">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SPIN WHEEL -->
+    <div class="page-section" id="section-spin">
+      <div class="page-header">
+        <h1 class="page-title">🎡 Spin Wheel</h1>
+        <p class="page-subtitle">Draw winners using the lottery spin (Max 3 spins/day)</p>
+      </div>
+      <div class="card" style="max-width:600px;margin:0 auto;">
+        <div class="spin-container">
+          <div style="margin-bottom:8px;">
+            <span class="spin-count" id="spinCountText">Today's spins used: 0/3</span>
+          </div>
+          <div class="wheel-wrap">
+            <div class="wheel-pointer"></div>
+            <div class="wheel" id="spinWheel">
+              <div class="wheel-center">🎰</div>
+            </div>
+          </div>
+          <div class="winner-display" id="winnerDisplay"></div>
+          <button class="btn btn-primary" style="margin-top:24px;padding:16px 40px;font-size:16px;" onclick="doSpin()" id="spinBtn">
+            🎡 PLAY SPIN
+          </button>
+        </div>
+        <div id="todayWinners" style="margin-top:24px;display:none;">
+          <h3 class="section-title">Today's Winners</h3>
+          <div id="winnersList" class="winner-list"></div>
+        </div>
+      </div>
+      <div class="card" style="max-width:600px;margin:20px auto 0;">
+        <h3 class="section-title">📋 Spin History Log</h3>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>Date</th><th>Round</th><th>Token #</th><th>Secret Code</th><th>Drawn By</th></tr></thead>
+            <tbody id="spinHistoryBody"><tr><td colspan="5" style="text-align:center;color:var(--gray);">No spins yet</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- VERIFY TOKEN -->
+    <div class="page-section" id="section-verify">
+      <div class="page-header">
+        <h1 class="page-title">🔍 Verify Token & Secret Code</h1>
+        <p class="page-subtitle">Match a token number with its secret code</p>
+      </div>
+      <div class="card" style="max-width:500px;">
+        <div class="verify-section">
+          <div class="form-group">
+            <label class="form-label">Token Number</label>
+            <input type="number" id="verifyToken" class="form-control" placeholder="Enter token number (100–9999)"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Secret Code</label>
+            <input type="number" id="verifySecret" class="form-control" placeholder="Enter 6-digit secret code"/>
+          </div>
+          <button class="btn btn-primary btn-block" onclick="verifyTokenSecret()">🔍 VERIFY</button>
+        </div>
+        <div id="verifyResult" style="margin-top:20px;display:none;"></div>
+      </div>
+    </div>
+
+    <!-- ANALYTICS -->
+    <div class="page-section" id="section-analytics">
+      <div class="page-header">
+        <h1 class="page-title">📈 Analytics Dashboard</h1>
+        <p class="page-subtitle">Sales performance and revenue tracking</p>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon">🎟️</div><div class="stat-value" id="aTotalTickets">—</div><div class="stat-label">Total Tickets</div></div>
+        <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-value" id="aApproved">—</div><div class="stat-label">Approved</div></div>
+        <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-value" id="aRevenue">—</div><div class="stat-label">Revenue ₹</div></div>
+        <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-value" id="aUsers">—</div><div class="stat-label">Total Users</div></div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title">📅 Daily Ticket Sales</div>
+        <canvas id="salesChart" height="200"></canvas>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title">🥧 Ticket Status Distribution</div>
+        <canvas id="statusChart" height="200"></canvas>
+      </div>
+    </div>
+
+    <!-- WINNERS LOG -->
+    <div class="page-section" id="section-winners">
+      <div class="page-header">
+        <h1 class="page-title">🏆 Winners Log</h1>
+        <p class="page-subtitle">All declared lottery winners</p>
+      </div>
+      <div class="card">
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>Round</th><th>Token #</th><th>Applicant ID</th><th>Name</th><th>Date</th></tr></thead>
+            <tbody id="winnersLogBody"><tr><td colspan="5" style="text-align:center;color:var(--gray);">No winners yet</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- USER EDIT MODAL -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">✏️ Edit Ticket Status</div>
+      <button class="modal-close" onclick="closeModal('editModal')">✕</button>
+    </div>
+    <input type="hidden" id="editTicketId"/>
+    <div class="form-group">
+      <label class="form-label">Status</label>
+      <select id="editStatus" class="form-control">
+        <option value="pending">⏳ Pending</option>
+        <option value="approved">✅ Approved</option>
+        <option value="rejected">❌ Rejected</option>
+      </select>
+    </div>
+    <button class="btn btn-primary btn-block" onclick="saveEdit()">SAVE CHANGES</button>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+<script src="../js/firebase-config.js"></script>
+<script>
+const TICKET_PRICE = 9;
+const MAX_SPINS_PER_DAY = 3;
+
+let allRecords = [];
+let spinCount = 0;
+let todayWinnersArr = [];
+let dashChartInst = null;
+let salesChartInst = null;
+let statusChartInst = null;
+
+// Stars
+(function(){
+  const s=document.getElementById('stars');
+  for(let i=0;i<60;i++){
+    const el=document.createElement('div');el.className='star';
+    const sz=Math.random()*2+0.5;
+    el.style.cssText=`width:${sz}px;height:${sz}px;top:${Math.random()*100}%;left:${Math.random()*100}%;--d:${2+Math.random()*4}s;--delay:${Math.random()*3}s`;
+    s.appendChild(el);
+  }
+})();
+
+// Auth check
+window.addEventListener('DOMContentLoaded',async()=>{
+  if(!getAdminSession()){window.location.href='login.html';return;}
+  updateClock();
+  setInterval(updateClock,1000);
+  await loadDashboard();
+  await loadUsers();
+  await loadSpinData();
+  await loadWinnersLog();
+  document.getElementById('pageLoader').style.display='none';
+});
+
+function updateClock(){
+  const now=new Date();
+  document.getElementById('currentDateTime').textContent=now.toLocaleString('en-IN');
+}
+
+function toggleSidebar(){
+  const sb=document.getElementById('sidebar');
+  if(window.innerWidth<=900){sb.classList.toggle('open');}
+  else{sb.classList.toggle('closed');}
+}
+
+function showSection(name){
+  document.querySelectorAll('.page-section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.sidebar-link').forEach(l=>l.classList.remove('active'));
+  document.getElementById('section-'+name).classList.add('active');
+  const titles={dashboard:'Dashboard',users:'Users & Tickets',spin:'Spin Wheel',verify:'Verify Token',analytics:'Analytics',winners:'Winners Log'};
+  document.getElementById('topbarTitle').textContent=titles[name]||name;
+  if(name==='analytics')loadAnalytics();
+  if(window.innerWidth<=900)document.getElementById('sidebar').classList.remove('open');
+}
+
+function filterByStatus(status){
+  document.getElementById('filterStatus').value=status;
+  loadUsers();
+}
+
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+function openModal(id){document.getElementById(id).classList.add('open');}
+
+function openFullscreen(url){
+  document.getElementById('fullscreenImg').src=url;
+  document.getElementById('fullscreenOverlay').classList.add('open');
+}
+function closeFullscreen(){document.getElementById('fullscreenOverlay').classList.remove('open');}
+
+function adminLogout(){
+  clearAdminSession();
+  window.location.href='login.html';
+}
+
+// ===== DASHBOARD =====
+async function loadDashboard(){
+  try{
+    const [uSnap,tSnap]=await Promise.all([
+      db.collection('users').get(),
+      db.collection('tickets').get()
+    ]);
+    const tickets=tSnap.docs.map(d=>({id:d.id,...d.data()}));
+    const pending=tickets.filter(t=>t.status==='pending').length;
+    const approved=tickets.filter(t=>t.status==='approved').length;
+    const rejected=tickets.filter(t=>t.status==='rejected').length;
+    document.getElementById('dTotalUsers').textContent=uSnap.size;
+    document.getElementById('dPending').textContent=pending;
+    document.getElementById('dApproved').textContent=approved;
+    document.getElementById('dRejected').textContent=rejected;
+    document.getElementById('dTotalTickets').textContent=tickets.length;
+    document.getElementById('dRevenue').textContent=approved*TICKET_PRICE;
+    renderDashChart(tickets);
+  }catch(e){console.error(e);}
+}
+
+function renderDashChart(tickets){
+  const ctx=document.getElementById('dashChart').getContext('2d');
+  const days=[];const counts=[];
+  for(let i=6;i>=0;i--){
+    const d=new Date();d.setDate(d.getDate()-i);
+    const label=d.toLocaleDateString('en-IN',{month:'short',day:'numeric'});
+    days.push(label);
+    const dayStr=d.toISOString().split('T')[0];
+    const count=tickets.filter(t=>{
+      if(!t.purchasedAt)return false;
+      const ts=t.purchasedAt.toDate?t.purchasedAt.toDate():new Date(t.purchasedAt);
+      return ts.toISOString().split('T')[0]===dayStr;
+    }).length;
+    counts.push(count);
+  }
+  if(dashChartInst)dashChartInst.destroy();
+  dashChartInst=new Chart(ctx,{
+    type:'bar',
+    data:{labels:days,datasets:[{label:'Tickets',data:counts,backgroundColor:'rgba(255,215,0,0.6)',borderColor:'#FFD700',borderWidth:2,borderRadius:6}]},
+    options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8892A4'},grid:{color:'rgba(255,255,255,0.05)'}},y:{ticks:{color:'#8892A4',stepSize:1},grid:{color:'rgba(255,255,255,0.05)'}}}}
+  });
+}
+
+// ===== USERS TABLE =====
+async function loadUsers(){
+  try{
+    const dateFilter=document.getElementById('filterDate').value;
+    const statusFilter=document.getElementById('filterStatus').value;
+
+    // Last 1 week
+    const weekAgo=new Date();weekAgo.setDate(weekAgo.getDate()-7);
+
+    let query=db.collection('tickets').where('purchasedAt','>=',firebase.firestore.Timestamp.fromDate(weekAgo)).orderBy('purchasedAt','desc');
+    if(statusFilter!=='all')query=query.where('status','==',statusFilter);
+    
+    const tSnap=await query.get();
+    allRecords=tSnap.docs.map(d=>({id:d.id,...d.data()}));
+    
+    // Date filter client-side
+    if(dateFilter){
+      allRecords=allRecords.filter(r=>{
+        if(!r.purchasedAt)return false;
+        const ts=r.purchasedAt.toDate?r.purchasedAt.toDate():new Date(r.purchasedAt);
+        return ts.toISOString().split('T')[0]===dateFilter;
+      });
+    }
+    renderUsersTable();
+  }catch(e){console.error(e);showToast('Failed to load users: '+e.message,'error');}
+}
+
+function renderUsersTable(){
+  const search=document.getElementById('filterSearch').value.toLowerCase();
+  let records=allRecords;
+  if(search){
+    records=records.filter(r=>(r.userName||'').toLowerCase().includes(search)||(r.applicantID+'').includes(search)||(r.userMobile||'').includes(search));
+  }
+  const tbody=document.getElementById('usersTableBody');
+  if(!records.length){tbody.innerHTML='<tr><td colspan="14" style="text-align:center;color:var(--gray);">No records found</td></tr>';return;}
+  tbody.innerHTML=records.map((r,i)=>`
+    <tr>
+      <td class="checkbox-col"><input type="checkbox" class="row-checkbox" value="${r.id}"/></td>
+      <td>${i+1}</td>
+      <td style="font-family:'Orbitron',monospace;font-size:12px;color:var(--gold);">${r.applicantID||'—'}</td>
+      <td>${r.userName||'—'}</td>
+      <td>${r.userMobile||'—'}</td>
+      <td style="font-size:12px;">${'—'/* email not stored in ticket, see users collection */}</td>
+      <td style="font-size:12px;">${'—'}</td>
+      <td style="font-family:'Orbitron',monospace;color:var(--gold);font-size:13px;">${r.tokenNumber||'—'}</td>
+      <td style="font-family:'Orbitron',monospace;color:var(--accent2);font-size:13px;">${r.secretCode||'—'}</td>
+      <td style="font-size:12px;">${r.utr||'—'}</td>
+      <td>${r.screenshotURL?`<img src="${r.screenshotURL}" class="img-thumb" onclick="openFullscreen('${r.screenshotURL}')" alt="ss"/>`:'—'}</td>
+      <td><span class="badge badge-${r.status}">${r.status}</span></td>
+      <td style="font-size:12px;">${r.purchasedAt?formatDate(r.purchasedAt):'—'}</td>
+      <td>
+        <div class="action-btns">
+          <button class="btn btn-sm btn-info" onclick="openEditModal('${r.id}','${r.status}')">✏️ Status</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteRecord('${r.id}')">🗑️</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function toggleSelectAll(){
+  const checked=document.getElementById('selectAll').checked;
+  document.querySelectorAll('.row-checkbox').forEach(cb=>cb.checked=checked);
+}
+
+function clearFilters(){
+  document.getElementById('filterDate').value='';
+  document.getElementById('filterStatus').value='all';
+  document.getElementById('filterSearch').value='';
+  loadUsers();
+}
+
+function openEditModal(ticketId,status){
+  document.getElementById('editTicketId').value=ticketId;
+  document.getElementById('editStatus').value=status;
+  openModal('editModal');
+}
+
+async function saveEdit(){
+  const id=document.getElementById('editTicketId').value;
+  const status=document.getElementById('editStatus').value;
+  try{
+    await db.collection('tickets').doc(id).update({status,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+    showToast('Status updated to '+status,'success');
+    closeModal('editModal');
+    loadUsers();
+    loadDashboard();
+  }catch(e){showToast('Update failed: '+e.message,'error');}
+}
+
+async function deleteRecord(id){
+  if(!confirm('Delete this record?'))return;
+  try{
+    await db.collection('tickets').doc(id).delete();
+    showToast('Record deleted','success');
+    loadUsers();loadDashboard();
+  }catch(e){showToast('Delete failed: '+e.message,'error');}
+}
+
+async function deleteSelectedRecords(){
+  const selected=[...document.querySelectorAll('.row-checkbox:checked')].map(cb=>cb.value);
+  if(!selected.length){showToast('No records selected','error');return;}
+  if(!confirm(`Delete ${selected.length} selected record(s)?`))return;
+  try{
+    const batch=db.batch();
+    selected.forEach(id=>batch.delete(db.collection('tickets').doc(id)));
+    await batch.commit();
+    showToast(`${selected.length} records deleted`,'success');
+    loadUsers();loadDashboard();
+  }catch(e){showToast('Delete failed: '+e.message,'error');}
+}
+
+// ===== EXPORT FUNCTIONS =====
+function exportCSV(){
+  const headers=['#','Applicant ID','Name','Mobile','Token Number','Secret Code','UTR','Status','Date'];
+  const rows=allRecords.map((r,i)=>[i+1,r.applicantID||'',r.userName||'',r.userMobile||'',r.tokenNumber||'',r.secretCode||'',r.utr||'',r.status,r.purchasedAt?formatDate(r.purchasedAt):'']);
+  const csv=[headers,...rows].map(r=>r.join(',')).join('\n');
+  downloadFile(csv,'lottery_data.csv','text/csv');
+}
+
+function exportTelegramCSV(){
+  const headers=['Name','Mobile Number','Token Number'];
+  const rows=allRecords.map(r=>[r.userName||'',r.userMobile||'',r.tokenNumber||'']);
+  const csv=[headers,...rows].map(r=>r.join(',')).join('\n');
+  downloadFile(csv,'lottery_telegram.csv','text/csv');
+}
+
+function exportPDF(){
+  const w=window.open('','_blank');
+  const rows=allRecords.map((r,i)=>`<tr><td>${i+1}</td><td>${r.applicantID||''}</td><td>${r.userName||''}</td><td>${r.userMobile||''}</td><td>${r.tokenNumber||''}</td><td>${r.secretCode||''}</td><td>${r.utr||''}</td><td>${r.status}</td><td>${r.purchasedAt?formatDate(r.purchasedAt):''}</td></tr>`).join('');
+  w.document.write(`<!DOCTYPE html><html><head><title>Lottery Data</title><style>body{font-family:Arial,sans-serif;}table{width:100%;border-collapse:collapse;}th,td{border:1px solid #ccc;padding:6px;font-size:12px;}th{background:#0A0E27;color:#FFD700;}</style></head><body><h2>Lottery Winner — Export (${new Date().toLocaleDateString('en-IN')})</h2><table><thead><tr><th>#</th><th>Applicant ID</th><th>Name</th><th>Mobile</th><th>Token #</th><th>Secret Code</th><th>UTR</th><th>Status</th><th>Date</th></tr></thead><tbody>${rows}</tbody></table></body></html>`);
+  w.document.close();
+  w.focus();w.print();
+}
+
+function downloadFile(content,filename,type){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([content],{type}));
+  a.download=filename;a.click();
+}
+
+// ===== SPIN WHEEL =====
+let isSpinning = false;
+
+async function loadSpinData(){
+  const today=new Date().toISOString().split('T')[0];
+  try{
+    const snap=await db.collection('spinLogs').where('date','==',today).get();
+    spinCount=snap.size;
+    todayWinnersArr=snap.docs.map(d=>d.data()).sort((a,b)=>a.spinRound-b.spinRound);
+    updateSpinUI();
+    renderSpinHistory();
+  }catch(e){console.error(e);}
+}
+
+function updateSpinUI(){
+  document.getElementById('spinCountText').textContent=`Today's spins used: ${spinCount}/${MAX_SPINS_PER_DAY}`;
+  const btn=document.getElementById('spinBtn');
+  if(spinCount>=MAX_SPINS_PER_DAY){
+    btn.disabled=true;
+    btn.textContent='🚫 Daily limit reached (3/3)';
+  }else{
+    btn.disabled=false;
+    btn.textContent=`🎡 PLAY SPIN (${MAX_SPINS_PER_DAY-spinCount} left)`;
+  }
+  if(todayWinnersArr.length>0){
+    document.getElementById('todayWinners').style.display='block';
+    const medals=['🥇','🥈','🥉'];
+    document.getElementById('winnersList').innerHTML=todayWinnersArr.map((w,i)=>`
+      <div class="winner-item">
+        <span class="winner-rank">${medals[i]||'🎖️'}</span>
+        <span>Round ${w.spinRound}</span>
+        <span class="winner-token">Token #${w.tokenNumber}</span>
+        <span style="font-size:13px;color:var(--gray);">${formatDate(w.createdAt)||''}</span>
+      </div>
+    `).join('');
+  }
+}
+
+async function doSpin(){
+  if(spinCount>=MAX_SPINS_PER_DAY){showToast('Daily spin limit reached!','error');return;}
+  if(isSpinning){return;}
+
+  // Get approved tickets for pool
+  const tSnap=await db.collection('tickets').where('status','==','approved').get();
+  if(tSnap.empty){showToast('No approved tickets to draw from!','error');return;}
+  const tickets=tSnap.docs.map(d=>d.data());
+
+  isSpinning=true;
+  document.getElementById('spinBtn').disabled=true;
+  document.getElementById('winnerDisplay').textContent='';
+
+  // Animate wheel
+  const wheel=document.getElementById('spinWheel');
+  const baseRotation=1800+Math.random()*720;
+  const currentRotation=parseFloat(wheel.style.getPropertyValue('--r')||0);
+  const newRotation=currentRotation+baseRotation;
+  wheel.style.setProperty('--r',newRotation);
+  wheel.style.transform=`rotate(${newRotation}deg)`;
+
+  // Pick random winner after 5 seconds
+  setTimeout(async()=>{
+    const winner=tickets[Math.floor(Math.random()*tickets.length)];
+    const round=spinCount+1;
+    const today=new Date().toISOString().split('T')[0];
+    const now=firebase.firestore.FieldValue.serverTimestamp();
+
+    // Save spin log
+    await db.collection('spinLogs').add({
+      date:today,
+      spinRound:round,
+      tokenNumber:winner.tokenNumber,
+      secretCode:winner.secretCode,
+      applicantID:winner.applicantID,
+      userName:winner.userName,
+      createdAt:now,
+      drawnBy:'admin'
+    });
+
+    // Save to winners collection
+    await db.collection('winners').add({
+      spinRound:round,
+      tokenNumber:winner.tokenNumber,
+      secretCode:winner.secretCode,
+      applicantID:winner.applicantID,
+      userName:winner.userName,
+      createdAt:now
+    });
+
+    spinCount++;
+    document.getElementById('winnerDisplay').innerHTML=`🏆 Winner: <span style="color:var(--gold);">Token #${winner.tokenNumber}</span>`;
+    
+    isSpinning=false;
+    await loadSpinData();
+    await loadWinnersLog();
+    showToast(`Round ${round} winner: Token #${winner.tokenNumber}! 🎉`,'success');
+  },5100);
+}
+
+async function renderSpinHistory(){
+  try{
+    const snap=await db.collection('spinLogs').orderBy('createdAt','desc').limit(30).get();
+    const tbody=document.getElementById('spinHistoryBody');
+    const rows=snap.docs.map(d=>d.data());
+    if(!rows.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--gray);">No spins yet</td></tr>';return;}
+    tbody.innerHTML=rows.map(r=>`<tr>
+      <td style="font-size:12px;">${r.date||'—'}</td>
+      <td><span style="background:rgba(255,215,0,0.1);color:var(--gold);padding:3px 10px;border-radius:50px;font-size:12px;">Round ${r.spinRound}</span></td>
+      <td style="font-family:'Orbitron',monospace;color:var(--gold);">${r.tokenNumber}</td>
+      <td style="font-family:'Orbitron',monospace;color:var(--accent2);">${r.secretCode}</td>
+      <td style="font-size:12px;">${r.drawnBy||'admin'}</td>
+    </tr>`).join('');
+  }catch(e){console.error(e);}
+}
+
+// ===== VERIFY TOKEN =====
+async function verifyTokenSecret(){
+  const token=parseInt(document.getElementById('verifyToken').value);
+  const secret=parseInt(document.getElementById('verifySecret').value);
+  if(!token||!secret){showToast('Enter both values','error');return;}
+  try{
+    const snap=await db.collection('tickets').where('tokenNumber','==',token).where('secretCode','==',secret).get();
+    const result=document.getElementById('verifyResult');
+    result.style.display='block';
+    if(!snap.empty){
+      const data=snap.docs[0].data();
+      result.innerHTML=`
+        <div style="background:rgba(0,200,81,0.1);border:1px solid var(--green);border-radius:12px;padding:20px;text-align:center;">
+          <div style="font-size:48px;margin-bottom:12px;">✅</div>
+          <h3 style="color:var(--green);margin-bottom:16px;">VALID TICKET!</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;text-align:left;">
+            <div><div style="color:var(--gray);font-size:11px;text-transform:uppercase;letter-spacing:1px;">Applicant ID</div><div style="color:var(--white);font-family:'Orbitron',monospace;">${data.applicantID}</div></div>
+            <div><div style="color:var(--gray);font-size:11px;text-transform:uppercase;letter-spacing:1px;">Name</div><div style="color:var(--white);">${data.userName}</div></div>
+            <div><div style="color:var(--gray);font-size:11px;text-transform:uppercase;letter-spacing:1px;">Token #</div><div style="color:var(--gold);font-family:'Orbitron',monospace;">${data.tokenNumber}</div></div>
+            <div><div style="color:var(--gray);font-size:11px;text-transform:uppercase;letter-spacing:1px;">Status</div><span class="badge badge-${data.status}">${data.status}</span></div>
+          </div>
+        </div>`;
+    }else{
+      result.innerHTML=`<div style="background:rgba(255,68,68,0.1);border:1px solid var(--red);border-radius:12px;padding:20px;text-align:center;"><div style="font-size:48px;margin-bottom:12px;">❌</div><h3 style="color:var(--red);">INVALID COMBINATION</h3><p style="color:var(--gray);margin-top:8px;">Token number and secret code do not match.</p></div>`;
+    }
+  }catch(e){showToast('Verification failed: '+e.message,'error');}
+}
+
+// ===== ANALYTICS =====
+async function loadAnalytics(){
+  try{
+    const [tSnap,uSnap]=await Promise.all([db.collection('tickets').get(),db.collection('users').get()]);
+    const tickets=tSnap.docs.map(d=>d.data());
+    const approved=tickets.filter(t=>t.status==='approved');
+    document.getElementById('aTotalTickets').textContent=tickets.length;
+    document.getElementById('aApproved').textContent=approved.length;
+    document.getElementById('aRevenue').textContent=approved.length*TICKET_PRICE;
+    document.getElementById('aUsers').textContent=uSnap.size;
+
+    // Sales chart
+    const days=[];const counts=[];
+    for(let i=13;i>=0;i--){
+      const d=new Date();d.setDate(d.getDate()-i);
+      days.push(d.toLocaleDateString('en-IN',{month:'short',day:'numeric'}));
+      const ds=d.toISOString().split('T')[0];
+      counts.push(tickets.filter(t=>{
+        if(!t.purchasedAt)return false;
+        const ts=t.purchasedAt.toDate?t.purchasedAt.toDate():new Date(t.purchasedAt);
+        return ts.toISOString().split('T')[0]===ds;
+      }).length);
+    }
+    const sc=document.getElementById('salesChart').getContext('2d');
+    if(salesChartInst)salesChartInst.destroy();
+    salesChartInst=new Chart(sc,{type:'line',data:{labels:days,datasets:[{label:'Tickets Sold',data:counts,borderColor:'#FFD700',backgroundColor:'rgba(255,215,0,0.1)',borderWidth:2,fill:true,tension:0.4,pointBackgroundColor:'#FFD700'}]},options:{responsive:true,plugins:{legend:{labels:{color:'#8892A4'}}},scales:{x:{ticks:{color:'#8892A4'},grid:{color:'rgba(255,255,255,0.05)'}},y:{ticks:{color:'#8892A4',stepSize:1},grid:{color:'rgba(255,255,255,0.05)'}}}}});
+    
+    // Status pie
+    const pending=tickets.filter(t=>t.status==='pending').length;
+    const rejected=tickets.filter(t=>t.status==='rejected').length;
+    const stc=document.getElementById('statusChart').getContext('2d');
+    if(statusChartInst)statusChartInst.destroy();
+    statusChartInst=new Chart(stc,{type:'doughnut',data:{labels:['Pending','Approved','Rejected'],datasets:[{data:[pending,approved.length,rejected],backgroundColor:['rgba(255,165,0,0.7)','rgba(0,200,81,0.7)','rgba(255,68,68,0.7)'],borderColor:['orange','#00C851','#FF4444'],borderWidth:2}]},options:{responsive:true,plugins:{legend:{labels:{color:'#B8C4D0',font:{size:13}}}}}});
+  }catch(e){console.error(e);}
+}
+
+// ===== WINNERS LOG =====
+async function loadWinnersLog(){
+  try{
+    const snap=await db.collection('winners').orderBy('createdAt','desc').get();
+    const medals=['🥇','🥈','🥉'];
+    const tbody=document.getElementById('winnersLogBody');
+    const rows=snap.docs.map(d=>d.data());
+    if(!rows.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--gray);">No winners yet</td></tr>';return;}
+    tbody.innerHTML=rows.map((r,i)=>`<tr>
+      <td>${medals[r.spinRound-1]||'🎖️'} Round ${r.spinRound}</td>
+      <td style="font-family:'Orbitron',monospace;color:var(--gold);">${r.tokenNumber}</td>
+      <td style="font-family:'Orbitron',monospace;font-size:12px;">${r.applicantID||'—'}</td>
+      <td>${r.userName||'—'}</td>
+      <td style="font-size:12px;">${r.createdAt?formatDate(r.createdAt):'—'}</td>
+    </tr>`).join('');
+  }catch(e){console.error(e);}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lottery Winner — Win Big Today!</title>
+  <link rel="stylesheet" href="css/style.css"/>
+  <style>
+    .cta-buttons{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;margin-top:36px;}
+    .cta-buttons .btn{padding:16px 36px;font-size:16px;min-width:160px;}
+    .how-it-works{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:24px;margin:40px 0;}
+    .step-card{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);padding:28px;text-align:center;transition:var(--transition);}
+    .step-card:hover{border-color:var(--gold);transform:translateY(-4px);}
+    .step-num{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--gold-dark),var(--gold));display:flex;align-items:center;justify-content:center;font-family:'Orbitron',monospace;font-weight:700;color:var(--navy);font-size:18px;margin:0 auto 16px;}
+    .step-icon{font-size:36px;margin-bottom:12px;}
+    .step-title{font-family:'Orbitron',monospace;font-size:14px;color:var(--gold);margin-bottom:8px;}
+    .step-desc{font-size:14px;color:var(--gray);line-height:1.6;}
+    .ticket-price-hero{display:inline-flex;align-items:center;gap:10px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.3);border-radius:50px;padding:10px 24px;margin-bottom:24px;font-size:16px;}
+    .live-ticker{background:rgba(255,215,0,0.05);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:12px 0;overflow:hidden;margin:32px 0;}
+    .ticker-inner{display:flex;gap:48px;animation:ticker 20s linear infinite;white-space:nowrap;}
+    @keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+    .ticker-item{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--gray-light);}
+    .ticker-item .val{color:var(--gold);font-family:'Orbitron',monospace;}
+    footer{text-align:center;padding:40px 24px;color:var(--gray);font-size:13px;border-top:1px solid var(--border);}
+    footer a{color:var(--gold);text-decoration:none;}
+  </style>
+</head>
+<body>
+<div class="stars" id="stars"></div>
+<div id="pageLoader"><div class="loader-ring"></div><p>LOADING...</p></div>
+<div id="toast" class="toast"></div>
+
+<!-- Navbar -->
+<nav class="navbar">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-logo"><span class="logo-icon">🎰</span>Lottery Winner</a>
+    <button class="hamburger" id="hamburger" onclick="toggleNav()">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="nav-menu" id="navMenu">
+      <a href="index.html" class="nav-link active">Home</a>
+      <a href="user/register.html" class="nav-link">Register</a>
+      <a href="user/login.html" class="nav-link">Login</a>
+      <a href="admin/login.html" class="nav-link" style="color:var(--accent);">Admin</a>
+    </div>
+  </div>
+</nav>
+
+<!-- Hero -->
+<div class="hero-section" style="position:relative;z-index:1;">
+  <div style="font-size:80px;margin-bottom:16px;">🎰</div>
+  <div class="ticket-price-hero">💰 Ticket Price: Only <strong style="color:var(--gold);">₹9</strong> per ticket!</div>
+  <h1 class="hero-title">
+    <span class="glow">Win the</span><br/>
+    <span style="color:var(--white);">Lottery</span>
+    <span class="glow"> Today</span>
+  </h1>
+  <p class="hero-subtitle">Register, buy your lucky ticket, and stand a chance to win exciting prizes! Safe, transparent, and instant draws.</p>
+  <div class="cta-buttons">
+    <a href="user/register.html" class="btn btn-primary">🎟️ REGISTER NOW</a>
+    <a href="user/login.html" class="btn btn-secondary">🔑 LOGIN</a>
+  </div>
+</div>
+
+<!-- Live Ticker -->
+<div class="live-ticker">
+  <div class="ticker-inner" id="tickerInner">
+    <span class="ticker-item">🎟️ Total Tickets Sold: <span class="val" id="tickTix">—</span></span>
+    <span class="ticker-item">👥 Registered Users: <span class="val" id="tickUsers">—</span></span>
+    <span class="ticker-item">💰 Revenue Collected: <span class="val">₹<span id="tickRev">—</span></span></span>
+    <span class="ticker-item">🏆 Winners Declared: <span class="val" id="tickWinners">—</span></span>
+    <span class="ticker-item">🎟️ Total Tickets Sold: <span class="val" id="tickTix2">—</span></span>
+    <span class="ticker-item">👥 Registered Users: <span class="val" id="tickUsers2">—</span></span>
+    <span class="ticker-item">💰 Revenue: <span class="val">₹<span id="tickRev2">—</span></span></span>
+    <span class="ticker-item">🏆 Winners: <span class="val" id="tickWinners2">—</span></span>
+  </div>
+</div>
+
+<!-- Main Content -->
+<div class="main" style="position:relative;z-index:1;">
+
+  <!-- Stats -->
+  <h2 class="section-title">📊 Live Statistics</h2>
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-icon">🎟️</div><div class="stat-value" id="statTix">—</div><div class="stat-label">Tickets Sold</div></div>
+    <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-value" id="statUsers">—</div><div class="stat-label">Total Users</div></div>
+    <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-value" id="statRev">—</div><div class="stat-label">Revenue ₹</div></div>
+    <div class="stat-card"><div class="stat-icon">🏆</div><div class="stat-value" id="statWinners">—</div><div class="stat-label">Winners</div></div>
+  </div>
+
+  <!-- How It Works -->
+  <h2 class="section-title">⚡ How It Works</h2>
+  <div class="how-it-works">
+    <div class="step-card">
+      <div class="step-num">1</div>
+      <div class="step-icon">📝</div>
+      <div class="step-title">Register</div>
+      <div class="step-desc">Create your account with name, mobile, email & get a unique Applicant ID instantly.</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">2</div>
+      <div class="step-icon">💳</div>
+      <div class="step-title">Buy Ticket</div>
+      <div class="step-desc">Pay ₹9 via UPI, upload your screenshot & UTR number to purchase a ticket.</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">3</div>
+      <div class="step-icon">✅</div>
+      <div class="step-title">Get Verified</div>
+      <div class="step-desc">Admin verifies your payment and assigns your unique Token Number & Secret Code.</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">4</div>
+      <div class="step-icon">🎡</div>
+      <div class="step-title">Win!</div>
+      <div class="step-desc">Admin spins the wheel. If your token is drawn, you WIN! Results announced here.</div>
+    </div>
+  </div>
+
+  <!-- Winners -->
+  <h2 class="section-title">🏆 Recent Winners</h2>
+  <div id="winnersPublic">
+    <div class="empty-state"><div class="empty-icon">🏆</div><p>No winners announced yet. Be the first!</p></div>
+  </div>
+
+  <!-- CTA Banner -->
+  <div style="background:linear-gradient(135deg,rgba(255,215,0,0.08),rgba(0,212,255,0.05));border:1px solid rgba(255,215,0,0.2);border-radius:24px;padding:48px 32px;text-align:center;margin:40px 0;">
+    <div style="font-size:56px;margin-bottom:16px;">🎟️</div>
+    <h2 style="font-family:'Cinzel Decorative',serif;font-size:clamp(20px,4vw,32px);color:var(--gold);margin-bottom:12px;">Ready to Win?</h2>
+    <p style="color:var(--gray-light);margin-bottom:28px;font-size:16px;">Join thousands of players. Your winning ticket is just one click away!</p>
+    <a href="user/register.html" class="btn btn-primary" style="font-size:17px;padding:18px 48px;">🎰 REGISTER & WIN NOW</a>
+  </div>
+</div>
+
+<footer>
+  <p>© 2025 Lottery Winner | Built with ❤️ | <a href="admin/login.html">Admin Panel</a></p>
+  <p style="margin-top:8px;opacity:0.6;">Play responsibly. Must be 18+ to participate.</p>
+</footer>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script>
+// Stars
+(function(){
+  const s=document.getElementById('stars');
+  for(let i=0;i<100;i++){
+    const el=document.createElement('div');el.className='star';
+    const sz=Math.random()*3+0.5;
+    el.style.cssText=`width:${sz}px;height:${sz}px;top:${Math.random()*100}%;left:${Math.random()*100}%;--d:${2+Math.random()*5}s;--delay:${Math.random()*4}s`;
+    s.appendChild(el);
+  }
+  document.getElementById('pageLoader').style.display='none';
+})();
+
+function toggleNav(){
+  const menu=document.getElementById('navMenu');
+  const ham=document.getElementById('hamburger');
+  menu.classList.toggle('open');
+  ham.classList.toggle('open');
+}
+
+// Load stats
+window.addEventListener('DOMContentLoaded',async()=>{
+  try{
+    const [uSnap,tSnap,wSnap]=await Promise.all([
+      db.collection('users').get(),
+      db.collection('tickets').where('status','==','approved').get(),
+      db.collection('winners').get()
+    ]);
+    const u=uSnap.size,t=tSnap.size,w=wSnap.size,r=t*9;
+    ['statTix','tickTix','tickTix2'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=t;});
+    ['statUsers','tickUsers','tickUsers2'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=u;});
+    ['statRev','tickRev','tickRev2'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=r;});
+    ['statWinners','tickWinners','tickWinners2'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=w;});
+
+    // Winners
+    const wData=await db.collection('winners').orderBy('createdAt','desc').limit(5).get();
+    const medals=['🥇','🥈','🥉','4️⃣','5️⃣'];
+    const container=document.getElementById('winnersPublic');
+    const winners=wData.docs.map(d=>d.data());
+    if(!winners.length){return;}
+    container.innerHTML=winners.map((w,i)=>`
+      <div class="winner-card-pub">
+        <div class="winner-medal">${medals[i]||'🎖️'}</div>
+        <div class="winner-info">
+          <div class="winner-token-pub">Token #${w.tokenNumber}</div>
+          <div class="winner-date">Round ${w.spinRound} Winner • ${w.createdAt?formatDate(w.createdAt):'—'}</div>
+        </div>
+        <div style="font-size:24px;">🏆</div>
+      </div>
+    `).join('');
+  }catch(e){console.error(e);}
+});
+</script>
+</body>
+</html>

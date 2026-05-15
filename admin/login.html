@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Login — Lottery Winner</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body>
+<div class="stars" id="stars"></div>
+<div id="pageLoader"><div class="loader-ring"></div><p>LOADING...</p></div>
+<div id="toast" class="toast"></div>
+
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div style="font-size:52px;">🔐</div>
+      <h1>Admin Panel</h1>
+      <p>Lottery Winner Management System</p>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Admin Username</label>
+      <input type="text" id="adminUser" class="form-control" placeholder="Enter admin username"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Admin Password</label>
+      <input type="password" id="adminPass" class="form-control" placeholder="Enter admin password"/>
+    </div>
+    <button class="btn btn-primary btn-block" onclick="adminLogin()" id="loginBtn" style="margin-top:8px;">
+      🔐 ADMIN LOGIN
+    </button>
+    <p style="text-align:center;margin-top:16px;">
+      <a href="../index.html" style="color:var(--gray);text-decoration:none;font-size:13px;">← Back to Home</a>
+    </p>
+    <p style="text-align:center;margin-top:8px;color:var(--gray);font-size:12px;opacity:0.6;">
+      Default: admin / admin123 (change in firebase-config.js)
+    </p>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+<script src="../js/firebase-config.js"></script>
+<script>
+// CHANGE THESE CREDENTIALS
+const ADMIN_USERNAME = 'admin';
+const ADMIN_PASSWORD = 'admin123';
+
+(function(){
+  const s=document.getElementById('stars');
+  for(let i=0;i<60;i++){
+    const el=document.createElement('div');el.className='star';
+    const sz=Math.random()*2+0.5;
+    el.style.cssText=`width:${sz}px;height:${sz}px;top:${Math.random()*100}%;left:${Math.random()*100}%;--d:${2+Math.random()*4}s;--delay:${Math.random()*3}s`;
+    s.appendChild(el);
+  }
+  if(getAdminSession()){window.location.href='dashboard.html';}
+  document.getElementById('pageLoader').style.display='none';
+})();
+
+document.addEventListener('keydown',e=>{if(e.key==='Enter')adminLogin();});
+
+function adminLogin(){
+  const u=document.getElementById('adminUser').value.trim();
+  const p=document.getElementById('adminPass').value;
+  if(u===ADMIN_USERNAME && p===ADMIN_PASSWORD){
+    setAdminSession({username:u,loginAt:Date.now()});
+    showToast('Admin login successful!','success');
+    setTimeout(()=>window.location.href='dashboard.html',700);
+  }else{
+    showToast('Invalid credentials!','error');
+    document.getElementById('adminPass').value='';
+  }
+}
+</script>
+</body>
+</html>
